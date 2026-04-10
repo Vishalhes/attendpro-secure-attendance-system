@@ -1,0 +1,2195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AttendPro — Employee Attendance System</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<!-- ════════════════════════════════════════════════════════════
+     FIREBASE SETUP INSTRUCTIONS (Read before deploying):
+     ════════════════════════════════════════════════════════════
+     1. Go to https://console.firebase.google.com
+     2. Create a new project (e.g. "attendance-pro")
+     3. Go to Project Settings > General > Your Apps > Add Web App
+     4. Copy the firebaseConfig object and REPLACE the one below
+     5. In Firebase Console:
+        → Authentication > Sign-in method > Enable "Email/Password"
+        → Firestore Database > Create database (Start in test mode)
+        → Firestore Rules: paste rules from bottom of this file
+     6. Deploy to GitHub Pages — done!
+     ════════════════════════════════════════════════════════════ -->
+
+<style>
+/* ── RESET & ROOT ────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#06090f;--bg2:#0b0f1a;--surface:#0f1623;--card:#131e2e;--card2:#192033;
+  --border:#1c2b42;--border2:#243550;
+  --text:#eef2ff;--text2:#8899bb;--text3:#4a5d7a;
+  --blue:#3b82f6;--blue2:#60a5fa;--blue-g:rgba(59,130,246,.12);
+  --green:#10b981;--green2:#34d399;--green-g:rgba(16,185,129,.12);
+  --gold:#f59e0b;--gold2:#fbbf24;--gold-g:rgba(245,158,11,.12);
+  --red:#ef4444;--red2:#f87171;--red-g:rgba(239,68,68,.12);
+  --purple:#8b5cf6;--purple2:#a78bfa;
+  --shadow:rgba(0,0,0,.5);
+  --radius:14px;
+}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+button{cursor:pointer;font-family:'DM Sans',sans-serif}
+input,select,textarea{font-family:'DM Sans',sans-serif}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* ── SCREENS ─────────────────────────────────────────────────── */
+.screen{display:none;min-height:100vh}
+.screen.active{display:flex}
+
+/* ═══════════════════════════════════════════════════════════════
+   LOGIN SCREEN
+═══════════════════════════════════════════════════════════════ */
+#loginScreen{
+  align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at 20% 50%,rgba(59,130,246,.08) 0%,transparent 60%),
+             radial-gradient(ellipse at 80% 20%,rgba(16,185,129,.06) 0%,transparent 50%),
+             var(--bg);
+  padding:20px;
+}
+.login-box{
+  background:var(--card);border:1px solid var(--border2);
+  border-radius:24px;padding:48px 44px;width:100%;max-width:420px;
+  position:relative;overflow:hidden;
+  box-shadow:0 40px 80px rgba(0,0,0,.4);
+}
+.login-box::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--blue),var(--green),var(--gold));
+}
+.login-logo{
+  text-align:center;margin-bottom:32px;
+}
+.login-logo-icon{
+  width:64px;height:64px;background:linear-gradient(135deg,var(--blue),var(--green));
+  border-radius:18px;display:inline-flex;align-items:center;justify-content:center;
+  font-size:28px;margin-bottom:14px;
+  box-shadow:0 12px 30px rgba(59,130,246,.3);
+}
+.login-logo h1{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;letter-spacing:.5px}
+.login-logo p{color:var(--text2);font-size:13px;margin-top:4px}
+.form-group{margin-bottom:18px}
+.form-group label{display:block;font-size:12px;color:var(--text2);font-weight:500;letter-spacing:.5px;text-transform:uppercase;margin-bottom:7px}
+.form-input{
+  width:100%;background:var(--bg2);border:1.5px solid var(--border);
+  border-radius:10px;padding:13px 16px;color:var(--text);font-size:14px;
+  outline:none;transition:.2s;
+}
+.form-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+.form-input::placeholder{color:var(--text3)}
+.login-btn{
+  width:100%;background:linear-gradient(135deg,var(--blue),#1d4ed8);
+  color:#fff;border:none;padding:14px;border-radius:11px;
+  font-size:15px;font-weight:600;font-family:'Syne',sans-serif;
+  transition:.25s;margin-top:6px;
+  box-shadow:0 8px 24px rgba(59,130,246,.3);
+}
+.login-btn:hover{transform:translateY(-1px);box-shadow:0 12px 32px rgba(59,130,246,.4)}
+.login-btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.login-error{
+  background:var(--red-g);border:1px solid rgba(239,68,68,.3);
+  border-radius:9px;padding:11px 14px;font-size:13px;color:var(--red2);
+  margin-top:14px;display:none;text-align:center;
+}
+.login-note{text-align:center;margin-top:20px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace}
+
+/* ═══════════════════════════════════════════════════════════════
+   MAIN APP
+═══════════════════════════════════════════════════════════════ */
+#appScreen{flex-direction:column}
+
+/* TOP NAV */
+.topnav{
+  position:sticky;top:0;z-index:200;
+  background:rgba(6,9,15,.92);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  padding:0 24px;height:60px;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+}
+.nav-brand{font-family:'Syne',sans-serif;font-weight:800;font-size:18px;color:var(--blue);display:flex;align-items:center;gap:10px}
+.nav-brand-icon{width:32px;height:32px;background:linear-gradient(135deg,var(--blue),var(--green));border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px}
+.nav-tabs{display:flex;gap:2px;background:var(--surface);border-radius:10px;padding:3px;border:1px solid var(--border)}
+.nav-tab{
+  padding:7px 16px;border-radius:7px;font-size:13px;font-weight:500;
+  border:none;background:transparent;color:var(--text2);transition:.2s;white-space:nowrap;
+}
+.nav-tab:hover{color:var(--text)}
+.nav-tab.active{background:var(--card2);color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.nav-right{display:flex;align-items:center;gap:10px}
+.nav-user{font-size:12px;color:var(--text2);font-family:'DM Mono',monospace}
+.btn-logout{
+  padding:7px 16px;border-radius:9px;border:1px solid var(--border2);
+  background:transparent;color:var(--text2);font-size:12px;transition:.2s;
+}
+.btn-logout:hover{border-color:var(--red);color:var(--red2)}
+
+/* MAIN CONTENT */
+.app-body{flex:1;padding:24px;max-width:1400px;width:100%;margin:0 auto}
+
+/* PAGES */
+.page{display:none}
+.page.active{display:block}
+
+/* ── CARDS & PANELS ──────────────────────────────────────────── */
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.panel-head{
+  padding:16px 20px;display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--border);background:var(--card2);
+}
+.panel-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700}
+.panel-body{padding:20px}
+
+/* KPI GRID */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:20px}
+.kpi-card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:20px 18px;position:relative;overflow:hidden;transition:.2s;
+}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.kpi-card.k-blue::before{background:var(--blue)}.kpi-card.k-green::before{background:var(--green)}
+.kpi-card.k-gold::before{background:var(--gold)}.kpi-card.k-red::before{background:var(--red)}
+.kpi-card.k-purple::before{background:var(--purple)}
+.kpi-num{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;line-height:1}
+.kpi-card.k-blue .kpi-num{color:var(--blue2)}.kpi-card.k-green .kpi-num{color:var(--green2)}
+.kpi-card.k-gold .kpi-num{color:var(--gold2)}.kpi-card.k-red .kpi-num{color:var(--red2)}
+.kpi-card.k-purple .kpi-num{color:var(--purple2)}
+.kpi-lbl{font-size:11px;color:var(--text2);margin-top:5px;text-transform:uppercase;letter-spacing:.8px}
+
+/* BUTTONS */
+.btn{
+  display:inline-flex;align-items:center;gap:7px;padding:9px 18px;
+  border-radius:9px;font-size:13px;font-weight:500;border:none;transition:.2s;
+}
+.btn-primary{background:var(--blue);color:#fff;box-shadow:0 4px 14px rgba(59,130,246,.25)}
+.btn-primary:hover{background:#2563eb;transform:translateY(-1px)}
+.btn-success{background:var(--green);color:#fff}
+.btn-success:hover{background:#059669}
+.btn-danger{background:transparent;border:1px solid rgba(239,68,68,.4);color:var(--red2)}
+.btn-danger:hover{background:var(--red-g)}
+.btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--text2)}
+.btn-ghost:hover{border-color:var(--blue);color:var(--blue2)}
+.btn-sm{padding:6px 12px;font-size:12px}
+.btn-gold{background:var(--gold);color:#000;font-weight:600}
+.btn-gold:hover{background:var(--gold2)}
+
+/* STATUS PILLS */
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;font-family:'DM Mono',monospace}
+.pill-green{background:var(--green-g);color:var(--green2);border:1px solid rgba(16,185,129,.25)}
+.pill-red{background:var(--red-g);color:var(--red2);border:1px solid rgba(239,68,68,.25)}
+.pill-gold{background:var(--gold-g);color:var(--gold2);border:1px solid rgba(245,158,11,.25)}
+.pill-blue{background:var(--blue-g);color:var(--blue2);border:1px solid rgba(59,130,246,.25)}
+.pill-purple{background:rgba(139,92,246,.1);color:var(--purple2);border:1px solid rgba(139,92,246,.25)}
+.pill::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
+
+/* TABLES */
+.tbl-wrap{overflow-x:auto}
+table.data-tbl{width:100%;border-collapse:collapse;font-size:13px}
+table.data-tbl th{
+  text-align:left;padding:11px 14px;color:var(--text2);
+  border-bottom:1px solid var(--border);font-size:11px;
+  text-transform:uppercase;letter-spacing:.8px;font-weight:500;
+  background:rgba(15,22,35,.5);white-space:nowrap;
+}
+table.data-tbl td{padding:12px 14px;border-bottom:1px solid rgba(28,43,66,.5);vertical-align:middle}
+table.data-tbl tr:last-child td{border-bottom:none}
+table.data-tbl tr:hover td{background:rgba(255,255,255,.018)}
+table.data-tbl td.mono{font-family:'DM Mono',monospace;font-size:12px}
+
+/* SEARCH & FILTER BAR */
+.filter-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.search-box{
+  flex:1;min-width:200px;background:var(--surface);border:1.5px solid var(--border);
+  border-radius:10px;padding:10px 14px;color:var(--text);font-size:13px;
+  outline:none;transition:.2s;
+}
+.search-box:focus{border-color:var(--blue)}
+.search-box::placeholder{color:var(--text3)}
+.filter-select{
+  background:var(--surface);border:1.5px solid var(--border);border-radius:10px;
+  padding:10px 14px;color:var(--text);font-size:13px;outline:none;transition:.2s;
+  min-width:140px;
+}
+.filter-select:focus{border-color:var(--blue)}
+
+/* MODAL */
+.modal-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);
+  backdrop-filter:blur(4px);z-index:500;align-items:center;justify-content:center;padding:20px;
+}
+.modal-overlay.open{display:flex}
+.modal{
+  background:var(--card);border:1px solid var(--border2);border-radius:20px;
+  width:100%;max-width:480px;max-height:90vh;overflow-y:auto;
+  box-shadow:0 40px 80px rgba(0,0,0,.5);
+}
+.modal-head{
+  padding:20px 24px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;background:var(--card);z-index:1;
+}
+.modal-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:700}
+.modal-close{
+  width:32px;height:32px;border-radius:8px;border:1px solid var(--border);
+  background:transparent;color:var(--text2);font-size:16px;
+  display:flex;align-items:center;justify-content:center;transition:.2s;
+}
+.modal-close:hover{background:var(--red-g);color:var(--red2);border-color:var(--red)}
+.modal-body{padding:24px}
+.modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end}
+
+/* FORM ELEMENTS */
+.fg{margin-bottom:16px}
+.fg label{display:block;font-size:12px;color:var(--text2);font-weight:500;letter-spacing:.5px;text-transform:uppercase;margin-bottom:7px}
+.fi{
+  width:100%;background:var(--bg2);border:1.5px solid var(--border);
+  border-radius:10px;padding:11px 14px;color:var(--text);font-size:13px;
+  outline:none;transition:.2s;
+}
+.fi:focus{border-color:var(--blue)}
+.fi::placeholder{color:var(--text3)}
+select.fi option{background:var(--card)}
+.fg-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* TOAST */
+.toast-container{position:fixed;bottom:24px;right:24px;z-index:1000;display:flex;flex-direction:column;gap:8px}
+.toast{
+  background:var(--card2);border:1px solid var(--border2);border-radius:12px;
+  padding:14px 18px;font-size:13px;min-width:240px;max-width:340px;
+  display:flex;align-items:center;gap:10px;
+  box-shadow:0 16px 40px rgba(0,0,0,.4);
+  animation:toastIn .3s ease;
+}
+.toast.success{border-color:rgba(16,185,129,.4);background:rgba(16,185,129,.08)}
+.toast.error{border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.08)}
+.toast.info{border-color:rgba(59,130,246,.4);background:rgba(59,130,246,.08)}
+@keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}
+
+/* LOADER */
+.loader{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.2);border-top-color:currentColor;border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.page-loader{display:flex;align-items:center;justify-content:center;padding:60px;gap:12px;color:var(--text2);font-size:14px}
+
+/* GRID */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+@media(max-width:900px){.g2,.g3{grid-template-columns:1fr}}
+
+/* ATTENDANCE TIMELINE */
+.timeline{display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto}
+.tl-item{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--surface);border-radius:10px;border:1px solid var(--border)}
+.tl-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.tl-icon.in{background:var(--green-g);color:var(--green2)}
+.tl-icon.out{background:var(--red-g);color:var(--red2)}
+.tl-info{flex:1}
+.tl-time{font-family:'DM Mono',monospace;font-size:13px;font-weight:500}
+.tl-label{font-size:11px;color:var(--text2);margin-top:2px}
+
+/* SECTION HEADER */
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
+.sec-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700}
+.sec-sub{font-size:12px;color:var(--text2);margin-top:2px}
+
+/* EMPLOYEE AVATAR */
+.emp-avatar{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:700;font-size:13px;flex-shrink:0}
+
+/* PROGRESS BAR */
+.prog-bar{height:5px;background:var(--border);border-radius:5px;overflow:hidden;margin-top:6px}
+.prog-fill{height:100%;border-radius:5px;transition:width .6s ease}
+
+/* MOBILE NAV */
+@media(max-width:700px){
+  .nav-tabs{display:none}
+  .mobile-tab-bar{display:flex!important}
+}
+.mobile-tab-bar{
+  display:none;position:fixed;bottom:0;left:0;right:0;
+  background:rgba(11,15,26,.95);backdrop-filter:blur(20px);
+  border-top:1px solid var(--border);padding:8px 16px;
+  z-index:200;gap:0;justify-content:space-around;
+}
+.mob-tab{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:8px 4px;border-radius:10px;border:none;background:transparent;color:var(--text3);font-size:10px;font-weight:500;transition:.2s;
+}
+.mob-tab.active{color:var(--blue2)}
+.mob-tab .mti{font-size:18px}
+
+/* EMPTY STATE */
+.empty-state{text-align:center;padding:48px 20px;color:var(--text2)}
+.empty-state .esi{font-size:40px;margin-bottom:12px}
+.empty-state h3{font-family:'Syne',sans-serif;font-size:16px;margin-bottom:6px;color:var(--text)}
+.empty-state p{font-size:13px}
+
+/* NO FIREBASE NOTE */
+.demo-banner{
+  background:linear-gradient(135deg,rgba(245,158,11,.1),rgba(59,130,246,.08));
+  border:1px solid rgba(245,158,11,.3);border-radius:12px;
+  padding:14px 18px;margin-bottom:20px;font-size:13px;color:var(--gold2);
+  display:flex;align-items:flex-start;gap:10px;
+}
+
+.login-mode-toggle{display:grid;grid-template-columns:1fr 1fr;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:6px;margin-bottom:18px}
+.login-mode-btn{border:none;background:transparent;color:var(--text2);padding:12px 14px;border-radius:10px;font-size:14px;font-weight:600;transition:.2s}
+.login-mode-btn.active{background:var(--card2);color:var(--text);box-shadow:0 6px 18px rgba(0,0,0,.25)}
+.login-help{font-size:12px;color:var(--text3);margin:-4px 0 14px}
+
+.app-footer{
+  margin-top:40px;
+  padding:16px 24px;
+  border-top:1px solid var(--border);
+  background:var(--card);
+}
+
+.footer-content{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:10px;
+  font-size:12px;
+  color:var(--text2);
+}
+
+.footer-right strong{
+  color:var(--blue2);
+  font-weight:600;
+}
+.linkedin-link{
+  margin-left:10px;
+  color:var(--text2);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  transition:.3s;
+}
+
+.linkedin-link:hover{
+  color:#0A66C2; /* LinkedIn blue */
+  transform:translateY(-2px);
+}
+
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════════
+     LOGIN SCREEN
+════════════════════════════════════════════════════════════ -->
+<div class="screen active" id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-icon">🏢</div>
+      <h1>AttendPro</h1>
+      <p>Employee Attendance Management System</p>
+    </div>
+    <div class="login-mode-toggle">
+      <button type="button" class="login-mode-btn active" id="modeAdminBtn" onclick="setLoginMode('admin')">🛡️ Admin Login</button>
+      <button type="button" class="login-mode-btn" id="modeEmployeeBtn" onclick="setLoginMode('employee')">👤 Employee Login</button>
+    </div>
+    <div class="login-help">Created By: VISHAL TIWARI </div>
+    <input type="hidden" id="loginMode" value="admin"/>
+    <div class="form-group">
+      <label>Email / Login ID</label>
+      <input class="form-input" type="email" id="loginEmail" placeholder="email@company.com" autocomplete="email"/>
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input class="form-input" type="password" id="loginPass" placeholder="Enter password" autocomplete="current-password"/>
+    </div>
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">Sign In</button>
+    <div class="login-error" id="loginError"></div>
+    <div class="login-note">🔒 Encrypted via Firebase Authentication</div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     MAIN APP SCREEN
+════════════════════════════════════════════════════════════ -->
+<div class="screen" id="appScreen">
+
+  <!-- TOP NAV -->
+  <nav class="topnav">
+    <div class="nav-brand">
+      <div class="nav-brand-icon">🏢</div>
+      AttendPro
+    </div>
+    <div class="nav-tabs" id="navTabs">
+      <button class="nav-tab active admin-only" onclick="showPage('dashboard')">📊 Dashboard</button>
+      <button class="nav-tab admin-only" onclick="showPage('mark')">✅ Mark Attendance</button>
+      <button class="nav-tab admin-only" onclick="showPage('records')">📋 Records</button>
+      <button class="nav-tab admin-only" onclick="showPage('employees')">👥 Employees</button>
+      <button class="nav-tab admin-only" onclick="showPage('reports')">📈 Reports</button>
+      <button class="nav-tab employee-only" style="display:none" onclick="showPage('self')">🕒 My Attendance</button>
+    </div>
+    <div class="nav-right">
+      <div class="nav-user" id="navUser"></div>
+      <button class="btn-logout" onclick="doLogout()">↩ Logout</button>
+    </div>
+  </nav>
+
+  <!-- MOBILE TAB BAR -->
+  <div class="mobile-tab-bar">
+    <button class="mob-tab active admin-only" onclick="showPage('dashboard')"><div class="mti">📊</div>Dashboard</button>
+    <button class="mob-tab admin-only" onclick="showPage('mark')"><div class="mti">✅</div>Mark</button>
+    <button class="mob-tab admin-only" onclick="showPage('records')"><div class="mti">📋</div>Records</button>
+    <button class="mob-tab admin-only" onclick="showPage('employees')"><div class="mti">👥</div>Employees</button>
+    <button class="mob-tab admin-only" onclick="showPage('reports')"><div class="mti">📈</div>Reports</button>
+    <button class="mob-tab employee-only" style="display:none" onclick="showPage('self')"><div class="mti">🕒</div>My</button>
+  </div>
+
+  <!-- APP BODY -->
+  <div class="app-body">
+
+    <!-- DEMO BANNER (shown when no Firebase) -->
+    <div class="demo-banner" id="demoBanner" style="display:none">
+      ⚠️ <div><strong>Demo Mode:</strong> Firebase not configured. Data is stored in browser memory only and will reset on refresh. See setup instructions at top of HTML file to connect Firebase for permanent storage.</div>
+    </div>
+
+    <!-- ── PAGE: DASHBOARD ─────────────────────────────────────── -->
+    <div class="page active" id="page-dashboard">
+      <div class="sec-hdr">
+        <div>
+          <div class="sec-title">Dashboard</div>
+          <div class="sec-sub" id="dashDate"></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <select class="filter-select" id="dashMonth" onchange="renderDashboard()" style="min-width:160px"></select>
+        </div>
+      </div>
+
+      <div class="kpi-grid" id="kpiGrid">
+        <div class="kpi-card k-blue"><div class="kpi-num" id="k-total">—</div><div class="kpi-lbl">Total Employees</div></div>
+        <div class="kpi-card k-green"><div class="kpi-num" id="k-present">—</div><div class="kpi-lbl">Present Today</div></div>
+        <div class="kpi-card k-red"><div class="kpi-num" id="k-absent">—</div><div class="kpi-lbl">Absent Today</div></div>
+        <div class="kpi-card k-gold"><div class="kpi-num" id="k-leave">—</div><div class="kpi-lbl">On Leave Today</div></div>
+        <div class="kpi-card k-purple"><div class="kpi-num" id="k-half">—</div><div class="kpi-lbl">Half Day Today</div></div>
+      </div>
+
+      <div class="g2" style="margin-bottom:16px">
+        <div class="panel">
+          <div class="panel-head"><span class="panel-title">📅 Today's Attendance</span><span id="todayDateBadge" style="font-size:11px;color:var(--text2);font-family:'DM Mono',monospace"></span></div>
+          <div class="panel-body">
+            <div class="tbl-wrap">
+              <table class="data-tbl">
+                <thead><tr><th>Employee</th><th>In Time</th><th>Out Time</th><th>Status</th></tr></thead>
+                <tbody id="todayTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><span class="panel-title">📊 Monthly Summary</span></div>
+          <div class="panel-body" id="monthlySummaryPanel">
+            <div class="page-loader"><div class="loader"></div> Loading...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PAGE: MARK ATTENDANCE ───────────────────────────────── -->
+    <div class="page" id="page-mark">
+      <div class="sec-hdr">
+        <div>
+          <div class="sec-title">Mark Attendance</div>
+          <div class="sec-sub">Record IN / OUT time for employees</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input type="date" class="filter-select" id="markDate" style="min-width:160px"/>
+          <button class="btn btn-gold" onclick="openBulkModal()">📋 Bulk Mark</button>
+        </div>
+      </div>
+
+      <div class="filter-bar">
+        <input class="search-box" type="text" id="markSearch" placeholder="🔍 Search employee..." oninput="renderMarkPage()"/>
+        <select class="filter-select" id="markDeptFilter" onchange="renderMarkPage()">
+          <option value="">All Departments</option>
+        </select>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <span class="panel-title">Employee Attendance Sheet</span>
+          <span id="markDateLabel" style="font-size:11px;color:var(--text2);font-family:'DM Mono',monospace"></span>
+        </div>
+        <div class="tbl-wrap">
+          <table class="data-tbl">
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th>Department</th>
+                <th>Shift</th>
+                <th>In Time</th>
+                <th>Out Time</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="markTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PAGE: RECORDS ───────────────────────────────────────── -->
+    <div class="page" id="page-records">
+      <div class="sec-hdr">
+        <div>
+          <div class="sec-title">Attendance Records</div>
+          <div class="sec-sub">Full attendance history with search & filter</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-success" onclick="exportExcel()">📥 Export Excel</button>
+          <button class="btn btn-ghost" onclick="exportCSV()">📄 Export CSV</button>
+        </div>
+      </div>
+
+      <div class="filter-bar">
+        <input class="search-box" type="text" id="recSearch" placeholder="🔍 Search employee name..." oninput="renderRecords()"/>
+        <input type="date" class="filter-select" id="recFromDate" onchange="renderRecords()"/>
+        <input type="date" class="filter-select" id="recToDate" onchange="renderRecords()"/>
+        <select class="filter-select" id="recStatus" onchange="renderRecords()">
+          <option value="">All Status</option>
+          <option value="Present">Present</option>
+          <option value="Absent">Absent</option>
+          <option value="Half Day">Half Day</option>
+          <option value="Leave">Leave</option>
+          <option value="Late">Late</option>
+        </select>
+        <select class="filter-select" id="recDept" onchange="renderRecords()">
+          <option value="">All Departments</option>
+        </select>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <span class="panel-title">Attendance Log</span>
+          <span id="recCount" style="font-size:11px;color:var(--text2)"></span>
+        </div>
+        <div class="tbl-wrap">
+          <table class="data-tbl">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Employee</th>
+                <th>Department</th>
+                <th>In Time</th>
+                <th>Out Time</th>
+                <th>Hours</th>
+                <th>Status</th>
+                <th>Note</th>
+              </tr>
+            </thead>
+            <tbody id="recTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PAGE: EMPLOYEES ─────────────────────────────────────── -->
+    <div class="page" id="page-employees">
+      <div class="sec-hdr">
+        <div>
+          <div class="sec-title">Employees</div>
+          <div class="sec-sub" id="empCount"></div>
+        </div>
+        <button class="btn btn-primary" onclick="openAddEmpModal()">➕ Add Employee</button>
+      </div>
+
+      <div class="filter-bar">
+        <input class="search-box" type="text" id="empSearch" placeholder="🔍 Search by name, ID, department..." oninput="renderEmployees()"/>
+        <select class="filter-select" id="empDeptFilter" onchange="renderEmployees()">
+          <option value="">All Departments</option>
+        </select>
+        <select class="filter-select" id="empStatusFilter" onchange="renderEmployees()">
+          <option value="">All Status</option>
+          <option value="Active">Active</option>
+          <option value="Inactive">Inactive</option>
+        </select>
+      </div>
+
+      <div class="panel">
+        <div class="tbl-wrap">
+          <table class="data-tbl">
+            <thead>
+              <tr>
+                <th>Emp ID</th>
+                <th>Name</th>
+                <th>Department</th>
+                <th>Designation</th>
+                <th>Shift</th>
+                <th>Join Date</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="empTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PAGE: REPORTS ───────────────────────────────────────── -->
+    <div class="page" id="page-reports">
+      <div class="sec-hdr">
+        <div>
+          <div class="sec-title">Reports & Analytics</div>
+          <div class="sec-sub">Monthly summaries per employee</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select class="filter-select" id="reportMonth" onchange="renderReports()" style="min-width:160px"></select>
+          <button class="btn btn-success" onclick="exportMonthlyExcel()">📥 Export Monthly Report</button>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-bottom:16px">
+        <div class="panel-head"><span class="panel-title">📊 Monthly Employee Summary</span></div>
+        <div class="tbl-wrap">
+          <table class="data-tbl">
+            <thead>
+              <tr>
+                <th>Emp ID</th>
+                <th>Employee Name</th>
+                <th>Department</th>
+                <th>Working Days</th>
+                <th>Present</th>
+                <th>Absent</th>
+                <th>Half Day</th>
+                <th>Leave</th>
+                <th>Late</th>
+                <th>Attendance %</th>
+              </tr>
+            </thead>
+            <tbody id="reportTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+
+
+    <!-- ── PAGE: EMPLOYEE SELF SERVICE ───────────────────────── -->
+    <div class="page" id="page-self"> 
+      <div class="sec-hdr"> 
+        <div> 
+          <div class="sec-title">My Attendance</div> 
+          <div class="sec-sub">Employee Self Punch In / Punch Out</div> 
+        </div> 
+      </div>
+
+      <div class="g2"> 
+        <div class="panel"> 
+          <div class="panel-head"><span class="panel-title">👤 Employee Details</span></div> 
+          <div class="panel-body" id="selfEmpCard"> 
+            <div class="page-loader"><div class="loader"></div> Loading...</div> 
+          </div> 
+        </div>
+
+        <div class="panel"> 
+          <div class="panel-head"><span class="panel-title">🕒 Today's Punch</span></div> 
+          <div class="panel-body"> 
+            <div id="selfTodayStatus" style="margin-bottom:16px;color:var(--text2);font-size:13px">Loading...</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap"> 
+              <button class="btn btn-success" id="btnPunchIn" onclick="employeePunchIn()">🟢 Punch In</button> 
+              <button class="btn btn-danger" id="btnPunchOut" onclick="employeePunchOut()">🔴 Punch Out</button> 
+            </div>
+            <div id="selfPunchMeta" style="margin-top:16px;font-size:12px;color:var(--text2);font-family:'DM Mono',monospace"></div>
+          </div> 
+        </div> 
+      </div>
+
+      <div class="panel" style="margin-top:16px"> 
+        <div class="panel-head"><span class="panel-title">📋 My Recent Attendance</span></div> 
+        <div class="tbl-wrap"> 
+          <table class="data-tbl"> 
+            <thead> 
+              <tr><th>Date</th><th>In Time</th><th>Out Time</th><th>Hours</th><th>Status</th></tr> 
+            </thead> 
+            <tbody id="selfAttendanceTable"></tbody> 
+          </table> 
+        </div> 
+      </div> 
+    </div>
+
+  </div><!-- /app-body -->
+</div><!-- /appScreen -->
+
+<!-- ════════════════════════════════════════════════════════════
+     MODALS
+════════════════════════════════════════════════════════════ -->
+
+<!-- ADD / EDIT EMPLOYEE MODAL -->
+<div class="modal-overlay" id="empModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="empModalTitle">Add Employee</div>
+      <button class="modal-close" onclick="closeModal('empModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="empId"/>
+      <div class="fg-row">
+        <div class="fg"><label>Employee ID *</label><input class="fi" type="text" id="empEmpId" placeholder="EMP001"/></div>
+        <div class="fg"><label>Full Name *</label><input class="fi" type="text" id="empName" placeholder="Rahul Sharma"/></div>
+      </div>
+      <div class="fg-row">
+        <div class="fg"><label>Department *</label>
+          <select class="fi" id="empDept">
+            <option value="">Select...</option>
+            <option>Sales</option><option>HR</option><option>Finance</option>
+            <option>Operations</option><option>IT</option><option>Marketing</option>
+            <option>Accounts</option><option>Admin</option><option>Logistics</option><option>Other</option>
+          </select>
+        </div>
+        <div class="fg"><label>Designation</label><input class="fi" type="text" id="empDesignation" placeholder="Executive"/></div>
+      </div>
+      <div class="fg-row">
+        <div class="fg"><label>Shift Start *</label><input class="fi" type="time" id="empShiftIn" value="09:00"/></div>
+        <div class="fg"><label>Shift End *</label><input class="fi" type="time" id="empShiftOut" value="18:00"/></div>
+      </div>
+      <div class="fg-row">
+        <div class="fg"><label>Join Date</label><input class="fi" type="date" id="empJoinDate"/></div>
+        <div class="fg"><label>Phone</label><input class="fi" type="tel" id="empPhone" placeholder="9876543210"/></div>
+      </div>
+      <div class="fg"><label>Email</label><input class="fi" type="email" id="empEmail" placeholder="employee@company.com"/></div>
+      <div class="fg-row">
+        <div class="fg"><label>Account Role</label>
+          <select class="fi" id="empRole">
+            <option value="employee">Employee</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div class="fg"><label>Status</label>
+          <select class="fi" id="empStatus"><option value="Active">Active</option><option value="Inactive">Inactive</option></select>
+        </div>
+      </div>
+      <div class="fg-row">
+        <div class="fg"><label>Half Day Threshold (hrs)</label>
+          <input class="fi" type="number" id="empHalfThreshold" value="4" min="1" max="12" step="0.5" title="Hours worked below this = Half Day"/>
+        </div>
+        <div class="fg"><label>Login Access</label><input class="fi" type="text" value="Create this email in Firebase Authentication" disabled/></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('empModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEmployee()">💾 Save Employee</button>
+    </div>
+  </div>
+</div>
+
+<!-- MARK ATTENDANCE MODAL -->
+<div class="modal-overlay" id="attModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="attModalTitle">Mark Attendance</div>
+      <button class="modal-close" onclick="closeModal('attModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="attEmpId"/>
+      <div id="attEmpInfo" style="background:var(--surface);border-radius:10px;padding:14px;margin-bottom:16px;font-size:13px"></div>
+      <div class="fg-row">
+        <div class="fg"><label>In Time</label><input class="fi" type="time" id="attInTime"/></div>
+        <div class="fg"><label>Out Time</label><input class="fi" type="time" id="attOutTime"/></div>
+      </div>
+      <div class="fg"><label>Status Override</label>
+        <select class="fi" id="attStatus">
+          <option value="auto">Auto Calculate</option>
+          <option value="Present">Present</option>
+          <option value="Half Day">Half Day</option>
+          <option value="Absent">Absent</option>
+          <option value="Leave">Leave</option>
+          <option value="Holiday">Holiday</option>
+        </select>
+      </div>
+      <div class="fg"><label>Leave Type (if Leave)</label>
+        <select class="fi" id="attLeaveType">
+          <option value="">N/A</option>
+          <option value="Casual Leave">Casual Leave</option>
+          <option value="Sick Leave">Sick Leave</option>
+          <option value="Earned Leave">Earned Leave</option>
+          <option value="LWP">Leave Without Pay</option>
+        </select>
+      </div>
+      <div class="fg"><label>Note / Remark</label>
+        <input class="fi" type="text" id="attNote" placeholder="Optional remark..."/>
+      </div>
+      <div id="attAutoStatus" style="margin-top:12px;font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;min-height:20px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('attModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAttendance()">💾 Save Attendance</button>
+    </div>
+  </div>
+</div>
+
+<!-- BULK MARK MODAL -->
+<div class="modal-overlay" id="bulkModal">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-head">
+      <div class="modal-title">📋 Bulk Mark Attendance</div>
+      <button class="modal-close" onclick="closeModal('bulkModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Mark same status for multiple employees at once</p>
+      <div class="fg"><label>Status for All</label>
+        <select class="fi" id="bulkStatus">
+          <option value="Present">Present (Full Day)</option>
+          <option value="Absent">Absent</option>
+          <option value="Leave">Leave</option>
+          <option value="Holiday">Holiday</option>
+        </select>
+      </div>
+      <div class="fg-row">
+        <div class="fg"><label>In Time</label><input class="fi" type="time" id="bulkIn" value="09:00"/></div>
+        <div class="fg"><label>Out Time</label><input class="fi" type="time" id="bulkOut" value="18:00"/></div>
+      </div>
+      <div class="fg"><label>Apply to Department</label>
+        <select class="fi" id="bulkDept">
+          <option value="ALL">All Departments</option>
+        </select>
+      </div>
+      <div class="fg"><label>Note</label><input class="fi" type="text" id="bulkNote" placeholder="e.g. National Holiday"/></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('bulkModal')">Cancel</button>
+      <button class="btn btn-gold" onclick="saveBulkAttendance()">✅ Apply to All</button>
+    </div>
+  </div>
+</div>
+
+<footer class="app-footer">
+  <div class="footer-content">
+    <div class="footer-left">
+      © 2026 AttendPro — All Rights Reserved
+    </div>
+
+    <div class="footer-right">
+      Designed & Developed by <strong>Vishal Tiwari</strong> 🚀
+
+      <a href="https://www.linkedin.com/in/vishal-tiwari-0a8313274" 
+         target="_blank" 
+         class="linkedin-link">
+         
+         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
+           <path d="M20.447 20.452h-3.554V14.82c0-1.344-.027-3.073-1.872-3.073-1.873 0-2.159 1.463-2.159 2.973v5.732H9.308V9h3.414v1.561h.049c.476-.9 1.637-1.849 3.37-1.849 3.604 0 4.267 2.372 4.267 5.456v6.284zM5.337 7.433a2.063 2.063 0 1 1 0-4.126 2.063 2.063 0 0 1 0 4.126zM6.816 20.452H3.858V9h2.958v11.452z"/>
+         </svg>
+
+      </a>
+    </div>
+  </div>
+</footer>
+<!-- ════════════════════════════════════════════════════════════
+     FIREBASE SDK
+════════════════════════════════════════════════════════════ -->
+<script type="module">
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBC9Ax6ueM6-iBk80XzxOnI2yJXUAmE4j4",
+  authDomain: "attendance-pro-34bdb.firebaseapp.com",
+  projectId: "attendance-pro-34bdb",
+  storageBucket: "attendance-pro-34bdb.firebasestorage.app",
+  messagingSenderId: "712973593845",
+  appId: "1:712973593845:web:5acf500bf37e1d4a8869bc"
+};
+
+const FIREBASE_READY = FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY";
+
+let db = null, auth = null, currentUser = null;
+let USE_DEMO = !FIREBASE_READY;
+
+if (FIREBASE_READY) {
+  try {
+    const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
+    const { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, query, where, orderBy } =
+      await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+    const { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } =
+      await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+
+    const app = initializeApp(FIREBASE_CONFIG);
+    db = getFirestore(app);
+    auth = getAuth(app);
+
+    window._fb = { collection, doc, setDoc, getDoc, getDocs, deleteDoc, query, where, orderBy, db, auth, signInWithEmailAndPassword, signOut, onAuthStateChanged };
+
+    window.auth = auth;
+    window.db = db;
+    window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+    window.signOutFirebase = signOut;
+
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        currentUser = user;
+        window._currentUser = user;
+        showApp(user);
+      } else {
+        showLogin();
+      }
+    });
+  } catch(e) {
+    console.warn('Firebase init failed:', e);
+    USE_DEMO = true;
+    window._demoMode = true;
+    initDemoMode();
+  }
+} else {
+  window._demoMode = true;
+  initDemoMode();
+}
+
+window._useDemo = USE_DEMO;
+</script>
+
+<!-- ════════════════════════════════════════════════════════════
+     APP LOGIC (works in both Firebase & Demo mode)
+════════════════════════════════════════════════════════════ -->
+<script>
+// ── ROLE / SESSION CONFIG ───────────────────────────────────────
+let APP_ROLE = 'admin';
+let CURRENT_EMPLOYEE = null;
+
+// ── DEMO DATA STORE (used when Firebase not configured) ────────
+let DEMO_EMPLOYEES = [
+  {id:'EMP001',empId:'EMP001',name:'Rohit Sharma',dept:'Sales',designation:'Sales Executive',shiftIn:'09:00',shiftOut:'18:00',phone:'9876543210',email:'rohit@co.com',joinDate:'2023-01-12',status:'Active',halfThreshold:4,role:'admin'},
+  {id:'EMP002',empId:'EMP002',name:'Priya Singh',dept:'HR',designation:'HR Executive',shiftIn:'09:30',shiftOut:'18:30',phone:'9876543211',email:'priya@co.com',joinDate:'2023-03-05',status:'Active',halfThreshold:4,role:'employee'},
+  {id:'EMP003',empId:'EMP003',name:'Ankit Verma',dept:'Finance',designation:'Accountant',shiftIn:'09:00',shiftOut:'18:00',phone:'9876543212',email:'ankit@co.com',joinDate:'2023-07-20',status:'Active',halfThreshold:4,role:'employee'},
+  {id:'EMP004',empId:'EMP004',name:'Meera Gupta',dept:'Sales',designation:'Sr. Executive',shiftIn:'09:00',shiftOut:'18:00',phone:'9876543213',email:'meera@co.com',joinDate:'2023-08-14',status:'Active',halfThreshold:4,role:'employee'},
+  {id:'EMP005',empId:'EMP005',name:'Suresh Yadav',dept:'Operations',designation:'Operator',shiftIn:'08:00',shiftOut:'17:00',phone:'9876543214',email:'suresh@co.com',joinDate:'2023-09-15',status:'Active',halfThreshold:4,role:'employee'},
+];
+
+let DEMO_ATTENDANCE = []; // {id, empId, date, inTime, outTime, status, leaveType, note, hours}
+
+// Generate sample attendance for demo
+(function() {
+  const today = new Date();
+  const days = 30;
+  DEMO_EMPLOYEES.forEach(emp => {
+    for (let i = days; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      if (d.getDay() === 0) continue; // skip Sunday
+      const dateStr = fmtDate(d);
+      const r = Math.random();
+      let rec;
+      if (r > 0.88) {
+        rec = {id:emp.id+'_'+dateStr,empId:emp.id,date:dateStr,inTime:'',outTime:'',status:'Absent',leaveType:'',note:'',hours:0};
+      } else if (r > 0.80) {
+        rec = {id:emp.id+'_'+dateStr,empId:emp.id,date:dateStr,inTime:'',outTime:'',status:'Leave',leaveType:'Casual Leave',note:'CL',hours:0};
+      } else {
+        const lateMin = Math.random() > 0.8 ? Math.floor(Math.random()*90)+10 : 0;
+        const inH = parseInt(emp.shiftIn.split(':')[0]);
+        const inM = parseInt(emp.shiftIn.split(':')[1]) + lateMin;
+        const actualIn = `${String(inH + Math.floor(inM/60)).padStart(2,'0')}:${String(inM%60).padStart(2,'0')}`;
+        const earlyLeave = Math.random() > 0.85 ? Math.floor(Math.random()*120)+30 : 0;
+        const outH = parseInt(emp.shiftOut.split(':')[0]);
+        const outM = parseInt(emp.shiftOut.split(':')[1]) - earlyLeave;
+        const actualOut = outM < 0
+          ? `${String(outH-1).padStart(2,'0')}:${String(60+outM).padStart(2,'0')}`
+          : `${String(outH).padStart(2,'0')}:${String(outM).padStart(2,'0')}`;
+        const hrs = calcHours(actualIn, actualOut);
+        const status = computeStatus(emp, actualIn, actualOut, hrs);
+        rec = {id:emp.id+'_'+dateStr,empId:emp.id,date:dateStr,inTime:actualIn,outTime:actualOut,status,leaveType:'',note:'',hours:hrs};
+      }
+      DEMO_ATTENDANCE.push(rec);
+    }
+  });
+})();
+
+// ── UTILITIES ────────────────────────────────────────────────────
+function fmtDate(d) {
+  return d.toISOString().split('T')[0];
+}
+function todayStr() { return fmtDate(new Date()); }
+function calcHours(inT, outT) {
+  if (!inT || !outT) return 0;
+  const [ih,im] = inT.split(':').map(Number);
+  const [oh,om] = outT.split(':').map(Number);
+  const diff = (oh*60+om) - (ih*60+im);
+  return Math.max(0, parseFloat((diff/60).toFixed(2)));
+}
+function computeStatus(emp, inTime, outTime, hours) {
+  if (!inTime) return 'Absent';
+
+  const threshold = emp.halfThreshold || 4;
+
+  // Shift timings
+  const [sh, sm] = emp.shiftIn.split(':').map(Number);
+  const [eh, em] = emp.shiftOut.split(':').map(Number);
+  const [ih, im] = inTime.split(':').map(Number);
+  const [oh, om] = outTime.split(':').map(Number);
+
+  const shiftStartMin = sh * 60 + sm;
+  const shiftEndMin = eh * 60 + em;
+  const inMin = ih * 60 + im;
+  const outMin = oh * 60 + om;
+
+  const lateMin = inMin - shiftStartMin;
+  const earlyExitMin = shiftEndMin - outMin;
+
+  // 1) Total worked hours below threshold = Half Day
+  if (hours < threshold) return 'Half Day';
+
+  // 2) More than 30 min late = Half Day
+  if (lateMin > 30) return 'Half Day';
+
+  // 3) More than 60 min early exit = Half Day
+  if (earlyExitMin > 60) return 'Half Day';
+
+  // 4) Slight late mark
+  if (lateMin > 5) return 'Late';
+
+  return 'Present';
+}
+function fmtDisplay(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+}
+function monthKey(dateStr) { return dateStr ? dateStr.substring(0,7) : ''; }
+function monthLabel(ym) {
+  if (!ym) return '';
+  const [y,m] = ym.split('-');
+  const names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return names[parseInt(m)-1]+' '+y;
+}
+function avatarColor(name) {
+  const colors = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#ef4444','#06b6d4','#ec4899'];
+  let h = 0; for(let c of (name||'?')) h = (h*31+c.charCodeAt(0))%colors.length;
+  return colors[h];
+}
+function initials(name) {
+  return (name||'?').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+}
+
+// ── DATA ACCESS LAYER ────────────────────────────────────────────
+// Always returns arrays; works in both Firebase and demo mode
+
+function normalizeEmail(email) {
+  return (email || '').trim().toLowerCase();
+}
+
+function getSelectedLoginMode() {
+  return document.getElementById('loginMode')?.value || 'admin';
+}
+
+function setLoginMode(mode) {
+  const normalized = mode === 'employee' ? 'employee' : 'admin';
+  const input = document.getElementById('loginMode');
+  if (input) input.value = normalized;
+  document.getElementById('modeAdminBtn')?.classList.toggle('active', normalized === 'admin');
+  document.getElementById('modeEmployeeBtn')?.classList.toggle('active', normalized === 'employee');
+}
+
+function getRoleFromEmployee(emp) {
+  return (emp?.role || 'employee').toLowerCase() === 'admin' ? 'admin' : 'employee';
+}
+
+async function getUserProfile(uid) {
+  if (!uid) return null;
+
+  if (window._useDemo) return null;
+
+  try {
+    const fb = window._fb;
+    const ref = fb.doc(fb.db, 'users', uid);
+    const snap = await fb.getDoc(ref);
+    return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+  } catch (e) {
+    console.error('getUserProfile error:', e);
+    return null;
+  }
+}
+
+async function getEmployeeById(empId) {
+  if (!empId) return null;
+
+  if (window._useDemo) {
+    return DEMO_EMPLOYEES.find(e => e.id === empId || e.empId === empId) || null;
+  }
+
+  try {
+    const fb = window._fb;
+    const ref = fb.doc(fb.db, 'employees', empId);
+    const snap = await fb.getDoc(ref);
+    return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+  } catch (e) {
+    console.error('getEmployeeById error:', e);
+    return null;
+  }
+}
+
+async function getEmployeeByEmail(email) {
+  const safeEmail = normalizeEmail(email);
+  if (!safeEmail) return null;
+
+  if (window._useDemo) {
+    return DEMO_EMPLOYEES.find(e => normalizeEmail(e.email) === safeEmail) || null;
+  }
+
+  try {
+    const fb = window._fb;
+    const q = fb.query(fb.collection(fb.db,'employees'), fb.where('email','==',safeEmail));
+    const snap = await fb.getDocs(q);
+    if (snap.empty) return null;
+    const d = snap.docs[0];
+    return {id:d.id, ...d.data()};
+  } catch (e) {
+    console.error('getEmployeeByEmail error:', e);
+    return null;
+  }
+}
+
+async function getEmployees() {
+  if (window._useDemo) {
+    if (APP_ROLE === 'employee' && CURRENT_EMPLOYEE) return [CURRENT_EMPLOYEE];
+    return [...DEMO_EMPLOYEES];
+  }
+
+  try {
+    if (APP_ROLE === 'employee' && CURRENT_EMPLOYEE) return [CURRENT_EMPLOYEE];
+    const fb = window._fb;
+    const snap = await fb.getDocs(fb.collection(fb.db,'employees'));
+    return snap.docs.map(d=>({id:d.id,...d.data()}));
+  } catch(e) {
+    console.error('getEmployees error:', e);
+    return CURRENT_EMPLOYEE ? [CURRENT_EMPLOYEE] : [];
+  }
+}
+
+async function saveEmployeeDB(emp) {
+  if (window._useDemo) {
+    const idx = DEMO_EMPLOYEES.findIndex(e => e.id === emp.id);
+    if (idx >= 0) DEMO_EMPLOYEES[idx] = emp;
+    else DEMO_EMPLOYEES.push(emp);
+    return;
+  }
+
+  try {
+    const fb = window._fb;
+    console.log("Saving employee to Firestore:", emp);
+    await fb.setDoc(fb.doc(fb.db, 'employees', emp.id), emp);
+    console.log("Employee saved successfully in Firestore");
+  } catch (error) {
+    console.error("saveEmployeeDB error:", error);
+    console.error("Error code:", error.code);
+    console.error("Error message:", error.message);
+    throw error;
+  }
+}
+
+async function deleteEmployeeDB(empId) {
+  if (window._useDemo) {
+    DEMO_EMPLOYEES = DEMO_EMPLOYEES.filter(e=>e.id!==empId);
+    DEMO_ATTENDANCE = DEMO_ATTENDANCE.filter(a=>a.empId!==empId);
+    return;
+  }
+  const fb = window._fb;
+  await fb.deleteDoc(fb.doc(fb.db,'employees',empId));
+}
+
+async function getAttendance(filters={}) {
+  const safeFilters = { ...filters };
+  if (APP_ROLE === 'employee' && CURRENT_EMPLOYEE) {
+    safeFilters.empId = CURRENT_EMPLOYEE.id;
+    delete safeFilters.email;
+  }
+
+  if (window._useDemo) {
+    let data = [...DEMO_ATTENDANCE];
+    if (safeFilters.empId) data = data.filter(a=>a.empId===safeFilters.empId);
+    if (safeFilters.email) data = data.filter(a=>normalizeEmail(a.email)===safeFilters.email || a.empId===safeFilters.empId);
+    if (safeFilters.date) data = data.filter(a=>a.date===safeFilters.date);
+    if (safeFilters.month) data = data.filter(a=>a.date && a.date.startsWith(safeFilters.month));
+    return data;
+  }
+  try {
+    const fb = window._fb;
+    let q = fb.collection(fb.db,'attendance');
+    const clauses = [];
+    if (safeFilters.date) clauses.push(fb.where('date','==',safeFilters.date));
+    else if (safeFilters.month) {
+      clauses.push(fb.where('date','>=',safeFilters.month+'-01'));
+      clauses.push(fb.where('date','<=',safeFilters.month+'-31'));
+    }
+    if (safeFilters.empId) clauses.push(fb.where('empId','==',safeFilters.empId));
+    if (safeFilters.email) clauses.push(fb.where('email','==',safeFilters.email));
+    if (clauses.length) q = fb.query(q, ...clauses);
+    const snap = await fb.getDocs(q);
+    return snap.docs.map(d=>({id:d.id,...d.data()}));
+  } catch(e) {
+    console.error('getAttendance error:', e);
+    return [];
+  }
+}
+
+async function saveAttendanceDB(rec) {
+  if (window._useDemo) {
+    const idx = DEMO_ATTENDANCE.findIndex(a=>a.id===rec.id);
+    if (idx>=0) DEMO_ATTENDANCE[idx]=rec; else DEMO_ATTENDANCE.push(rec);
+    return;
+  }
+  const fb = window._fb;
+  await fb.setDoc(fb.doc(fb.db,'attendance',rec.id),rec);
+}
+
+// ── AUTH ─────────────────────────────────────────────────────────
+function initDemoMode() {
+  document.getElementById('demoBanner').style.display='flex';
+  showLogin();
+}
+
+async function doLogin() {
+  const email = normalizeEmail(document.getElementById('loginEmail').value);
+  const pass = document.getElementById('loginPass').value.trim();
+  const selectedMode = getSelectedLoginMode();
+  const btn = document.getElementById('loginBtn');
+  const err = document.getElementById('loginError');
+
+  err.style.display = 'none';
+  err.textContent = '';
+
+  if (!email || !pass) {
+    err.textContent = 'Please enter email and password';
+    err.style.display = 'block';
+    return;
+  }
+
+  try {
+    btn.disabled = true;
+    btn.textContent = 'Signing In...';
+
+    const userCred = await window.signInWithEmailAndPassword(window.auth, email, pass);
+    const profile = await getUserProfile(userCred.user.uid);
+    const empRecord = profile?.employeeId ? await getEmployeeById(profile.employeeId) : null;
+    const actualRole = (profile?.role || getRoleFromEmployee(empRecord));
+
+    if (!profile || !empRecord || normalizeEmail(empRecord.email) !== email || actualRole !== selectedMode) {
+      await window.signOutFirebase(window.auth);
+      throw new Error('INVALID_LOGIN');
+    }
+
+    document.getElementById('navUser').textContent = userCred.user.email;
+    showToast('Login successful', 'success');
+  } catch (error) {
+    err.textContent = 'Invalid email / password';
+    err.style.display = 'block';
+    showToast('Login failed', 'error');
+    console.error('Login error:', error);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Sign In';
+  }
+}
+function showErr(msg) {
+  const err = document.getElementById('loginError');
+  err.textContent=msg;err.style.display='block';
+}
+
+async function doLogout() {
+  try {
+    await window.signOutFirebase(window.auth);
+    document.getElementById('appScreen').classList.remove('active');
+    document.getElementById('loginScreen').classList.add('active');
+    document.getElementById('loginEmail').value = '';
+    document.getElementById('loginPass').value = '';
+    document.getElementById('navUser').textContent = '';
+    APP_ROLE = 'admin';
+    CURRENT_EMPLOYEE = null;
+    showToast('Logged out successfully', 'info');
+  } catch (error) {
+    console.error(error);
+    showToast('Logout failed', 'error');
+  }
+}
+
+document.getElementById('loginEmail').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('loginPass').focus(); });
+document.getElementById('loginPass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+setLoginMode('admin');
+
+// ── SCREEN CONTROL ───────────────────────────────────────────────
+function showLogin() {
+  document.getElementById('loginScreen').classList.add('active');
+  document.getElementById('appScreen').classList.remove('active');
+}
+async function showApp(user) {
+  document.getElementById('loginScreen').classList.remove('active');
+  document.getElementById('appScreen').classList.add('active');
+  document.getElementById('navUser').textContent = user.email;
+
+  const profile = await getUserProfile(user.uid);
+  const empRecord = profile?.employeeId ? await getEmployeeById(profile.employeeId) : null;
+  APP_ROLE = (profile?.role || getRoleFromEmployee(empRecord));
+  CURRENT_EMPLOYEE = empRecord;
+
+  applyRoleUI();
+  initApp();
+}
+
+function applyRoleUI() {
+  document.querySelectorAll('.admin-only').forEach(el => {
+    el.style.display = APP_ROLE === 'admin' ? '' : 'none';
+  });
+
+  document.querySelectorAll('.employee-only').forEach(el => {
+    el.style.display = APP_ROLE === 'employee' ? '' : 'none';
+  });
+
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab,.mob-tab').forEach(t => t.classList.remove('active'));
+
+  if (APP_ROLE === 'employee') {
+    document.getElementById('page-self').classList.add('active');
+    document.querySelectorAll(`[onclick="showPage('self')"]`).forEach(t => t.classList.add('active'));
+  } else {
+    document.getElementById('page-dashboard').classList.add('active');
+    document.querySelectorAll(`[onclick="showPage('dashboard')"]`).forEach(t => t.classList.add('active'));
+  }
+}
+
+// ── PAGE NAVIGATION ───────────────────────────────────────────────
+function showPage(name) {
+  if (APP_ROLE === 'employee' && name !== 'self') return;
+
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab,.mob-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.querySelectorAll(`[onclick="showPage('${name}')"]`).forEach(t=>t.classList.add('active'));
+  if(name==='dashboard') renderDashboard();
+  if(name==='mark') renderMarkPage();
+  if(name==='records') renderRecords();
+  if(name==='employees') renderEmployees();
+  if(name==='reports') renderReports();
+  if(name==='self') renderSelfPage();
+}
+
+// ── INIT APP ─────────────────────────────────────────────────────
+function initApp() {
+  // Set today date for mark page
+  document.getElementById('markDate').value = todayStr();
+  document.getElementById('markDate').addEventListener('change', renderMarkPage);
+
+  // Set date filter defaults (last 30 days)
+  const from = new Date(); from.setDate(from.getDate()-30);
+  document.getElementById('recFromDate').value = fmtDate(from);
+  document.getElementById('recToDate').value = todayStr();
+
+  // Populate month selectors
+  populateMonthSelectors();
+
+  // Set today label
+  document.getElementById('dashDate').textContent = new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('todayDateBadge').textContent = fmtDisplay(todayStr());
+
+  populateDeptFilters();
+
+  if (APP_ROLE === 'employee') renderSelfPage();
+  else renderDashboard();
+}
+
+function populateMonthSelectors() {
+  const selectors = ['dashMonth','reportMonth'];
+  const months = [];
+  const now = new Date();
+  for(let i=0;i<12;i++) {
+    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    months.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+  }
+  selectors.forEach(id => {
+    const sel = document.getElementById(id);
+    if(!sel) return;
+    sel.innerHTML = months.map((m,i)=>`<option value="${m}" ${i===0?'selected':''}>${monthLabel(m)}</option>`).join('');
+  });
+}
+
+async function populateDeptFilters() {
+  const emps = await getEmployees();
+  const depts = [...new Set(emps.map(e=>e.dept).filter(Boolean))].sort();
+  const ids = ['markDeptFilter','recDept','empDeptFilter','bulkDept'];
+  ids.forEach(id => {
+    const sel = document.getElementById(id);
+    if(!sel) return;
+    const extra = id==='bulkDept' ? '' : '<option value="">All Departments</option>';
+    if(id==='bulkDept') sel.innerHTML = '<option value="ALL">All Departments</option>';
+    else sel.innerHTML = extra;
+    depts.forEach(d => sel.innerHTML += `<option value="${d}">${d}</option>`);
+  });
+}
+
+// ── STATUS BADGE ─────────────────────────────────────────────────
+function statusPill(status) {
+  const map = {
+    'Present':'pill-green','Absent':'pill-red','Half Day':'pill-gold',
+    'Leave':'pill-blue','Late':'pill-purple','Holiday':'pill-purple'
+  };
+  return `<span class="pill ${map[status]||'pill-blue'}">${status||'—'}</span>`;
+}
+
+// ── DASHBOARD ────────────────────────────────────────────────────
+async function renderDashboard() {
+  const emps = await getEmployees();
+  const todayAtt = await getAttendance({date: todayStr()});
+
+  const attMap = {};
+  todayAtt.forEach(a => attMap[a.empId]=a);
+
+  let present=0,absent=0,leave=0,half=0;
+  emps.filter(e=>e.status==='Active').forEach(emp => {
+    const a = attMap[emp.id];
+    if (!a) { absent++; return; }
+    if (a.status==='Present') present++;
+    else if (a.status==='Absent') absent++;
+    else if (a.status==='Leave') leave++;
+    else if (a.status==='Half Day'||a.status==='Late') half++;
+    else absent++;
+  });
+
+  document.getElementById('k-total').textContent = emps.filter(e=>e.status==='Active').length;
+  document.getElementById('k-present').textContent = present;
+  document.getElementById('k-absent').textContent = absent;
+  document.getElementById('k-leave').textContent = leave;
+  document.getElementById('k-half').textContent = half;
+
+  // Today table
+  const tbody = document.getElementById('todayTable');
+  const activeEmps = emps.filter(e=>e.status==='Active');
+  if (!activeEmps.length) { tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--text2);padding:20px">No employees found</td></tr>'; }
+  else {
+    tbody.innerHTML = activeEmps.map(emp => {
+      const a = attMap[emp.id] || {};
+      const status = a.status || 'Absent';
+      const col = avatarColor(emp.name);
+      return `<tr>
+        <td><div style="display:flex;align-items:center;gap:10px">
+          <div class="emp-avatar" style="background:${col}20;color:${col}">${initials(emp.name)}</div>
+          <div><div style="font-weight:500">${emp.name}</div><div style="font-size:11px;color:var(--text2)">${emp.dept}</div></div>
+        </div></td>
+        <td class="mono">${a.inTime||'—'}</td>
+        <td class="mono">${a.outTime||'—'}</td>
+        <td>${statusPill(status)}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Monthly summary
+  const selMonth = document.getElementById('dashMonth').value;
+  const monthAtt = await getAttendance({month: selMonth});
+  const monthMap = {};
+  monthAtt.forEach(a => { if(!monthMap[a.empId]) monthMap[a.empId]={}; monthMap[a.empId][a.date]=a; });
+
+  // Count working days in month
+  const [yr,mo] = selMonth.split('-').map(Number);
+  const daysInMonth = new Date(yr,mo,0).getDate();
+  let workingDays = 0;
+  for(let d=1;d<=daysInMonth;d++) {
+    const dt = new Date(yr,mo-1,d);
+    if(dt.getDay()!==0) workingDays++; // exclude Sunday
+  }
+
+  const mPanel = document.getElementById('monthlySummaryPanel');
+  mPanel.innerHTML = activeEmps.slice(0,8).map(emp => {
+    const recs = monthMap[emp.id]||{};
+    const p = Object.values(recs).filter(r=>r.status==='Present'||r.status==='Late').length;
+    const pct = workingDays ? Math.round(p/workingDays*100) : 0;
+    const col = avatarColor(emp.name);
+    const barCol = pct>=90?'var(--green)':pct>=75?'var(--gold)':'var(--red)';
+    return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <div class="emp-avatar" style="background:${col}20;color:${col};width:32px;height:32px;font-size:12px">${initials(emp.name)}</div>
+      <div style="flex:1">
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+          <span style="font-weight:500">${emp.name}</span>
+          <span style="color:var(--text2);font-family:'DM Mono',monospace">${p}/${workingDays} days</span>
+        </div>
+        <div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${barCol}"></div></div>
+      </div>
+      <div style="font-family:'DM Mono',monospace;font-size:12px;color:${barCol};min-width:36px;text-align:right">${pct}%</div>
+    </div>`;
+  }).join('') || '<div class="empty-state"><p>No data</p></div>';
+}
+
+// ── MARK ATTENDANCE PAGE ──────────────────────────────────────────
+async function renderMarkPage() {
+  const date = document.getElementById('markDate').value || todayStr();
+  const search = document.getElementById('markSearch').value.toLowerCase();
+  const deptFilter = document.getElementById('markDeptFilter').value;
+
+  document.getElementById('markDateLabel').textContent = fmtDisplay(date);
+
+  const [emps, attRecs] = await Promise.all([getEmployees(), getAttendance({date})]);
+  const attMap = {};
+  attRecs.forEach(a => attMap[a.empId]=a);
+
+  let list = emps.filter(e=>e.status==='Active');
+  if (search) list = list.filter(e=>e.name.toLowerCase().includes(search)||e.empId.toLowerCase().includes(search));
+  if (deptFilter) list = list.filter(e=>e.dept===deptFilter);
+
+  const tbody = document.getElementById('markTable');
+  if (!list.length) {
+    tbody.innerHTML='<tr><td colspan="7"><div class="empty-state"><div class="esi">🔍</div><h3>No employees found</h3></div></td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = list.map(emp => {
+    const a = attMap[emp.id]||{};
+    const status = a.status||'';
+    const col = avatarColor(emp.name);
+    return `<tr>
+      <td><div style="display:flex;align-items:center;gap:10px">
+        <div class="emp-avatar" style="background:${col}20;color:${col}">${initials(emp.name)}</div>
+        <div><div style="font-weight:500">${emp.name}</div><div style="font-size:11px;color:var(--text2);font-family:'DM Mono',monospace">${emp.empId}</div></div>
+      </div></td>
+      <td style="font-size:12px;color:var(--text2)">${emp.dept}</td>
+      <td style="font-size:11px;color:var(--text2);font-family:'DM Mono',monospace">${emp.shiftIn}–${emp.shiftOut}</td>
+      <td class="mono" style="color:${a.inTime?'var(--green2)':'var(--text3)'}">${a.inTime||'—'}</td>
+      <td class="mono" style="color:${a.outTime?'var(--red2)':'var(--text3)'}">${a.outTime||'—'}</td>
+      <td>${status ? statusPill(status) : '<span style="color:var(--text3);font-size:12px">Not marked</span>'}</td>
+      <td>
+        <button class="btn btn-sm btn-ghost" onclick="openAttModal('${emp.id}','${date}')">
+          ${status ? '✏️ Edit' : '✅ Mark'}
+        </button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── ATTENDANCE MODAL ─────────────────────────────────────────────
+let _currentAttEmp = null, _currentAttDate = null;
+
+async function openAttModal(empId, date) {
+  const emps = await getEmployees();
+  const emp = emps.find(e=>e.id===empId);
+  if (!emp) return;
+  _currentAttEmp = emp;
+  _currentAttDate = date;
+
+  document.getElementById('attModalTitle').textContent = `Mark: ${emp.name}`;
+  document.getElementById('attEmpId').value = empId;
+  document.getElementById('attEmpInfo').innerHTML = `
+    <div style="display:flex;gap:12px;align-items:center">
+      <div class="emp-avatar" style="background:${avatarColor(emp.name)}20;color:${avatarColor(emp.name)}">${initials(emp.name)}</div>
+      <div>
+        <div style="font-weight:600">${emp.name} · ${emp.empId}</div>
+        <div style="color:var(--text2);font-size:12px;margin-top:2px">${emp.dept} · ${emp.designation}</div>
+        <div style="color:var(--text3);font-size:11px;font-family:'DM Mono',monospace;margin-top:2px">Shift: ${emp.shiftIn} – ${emp.shiftOut}</div>
+      </div>
+      <div style="margin-left:auto;font-family:'DM Mono',monospace;font-size:12px;color:var(--blue2)">${fmtDisplay(date)}</div>
+    </div>`;
+
+  // Load existing
+  const att = (await getAttendance({date,empId})).find(a=>a.empId===empId);
+  document.getElementById('attInTime').value = att?.inTime || emp.shiftIn;
+  document.getElementById('attOutTime').value = att?.outTime || emp.shiftOut;
+  document.getElementById('attStatus').value = att?.status ? att.status : 'auto';
+  document.getElementById('attLeaveType').value = att?.leaveType||'';
+  document.getElementById('attNote').value = att?.note||'';
+  updateAutoStatus();
+
+  document.getElementById('attInTime').addEventListener('input', updateAutoStatus);
+  document.getElementById('attOutTime').addEventListener('input', updateAutoStatus);
+
+  openModal('attModal');
+}
+
+function updateAutoStatus() {
+  const emp = _currentAttEmp;
+  if (!emp) return;
+  const inT = document.getElementById('attInTime').value;
+  const outT = document.getElementById('attOutTime').value;
+  if (!inT || !outT) { document.getElementById('attAutoStatus').textContent=''; return; }
+  const hrs = calcHours(inT, outT);
+  const status = computeStatus(emp, inT, outT, hrs);
+  document.getElementById('attAutoStatus').innerHTML =
+    `Auto Status: ${statusPill(status)} · Hours worked: <strong style="color:var(--gold2)">${hrs.toFixed(1)} hrs</strong>`;
+}
+
+async function saveAttendance() {
+  const empId = document.getElementById('attEmpId').value;
+  const date = _currentAttDate;
+  const inTime = document.getElementById('attInTime').value;
+  const outTime = document.getElementById('attOutTime').value;
+  const statusOverride = document.getElementById('attStatus').value;
+  const leaveType = document.getElementById('attLeaveType').value;
+  const note = document.getElementById('attNote').value;
+
+  if (!empId || !date) return;
+
+  const emp = _currentAttEmp;
+  const hrs = calcHours(inTime, outTime);
+  const status = statusOverride==='auto' ? computeStatus(emp,inTime,outTime,hrs) : statusOverride;
+
+  const rec = {
+    id: empId+'_'+date, empId, date,
+    inTime: status==='Absent'||status==='Leave' ? '' : inTime,
+    outTime: status==='Absent'||status==='Leave' ? '' : outTime,
+    status, leaveType, note, hours: hrs,
+    empName: emp.name, empDept: emp.dept, empEmpId: emp.empId,
+    email: normalizeEmail(emp.email),
+    updatedAt: new Date().toISOString()
+  };
+
+  try {
+    await saveAttendanceDB(rec);
+    showToast(`✅ Attendance saved for ${emp.name}`, 'success');
+    closeModal('attModal');
+    renderMarkPage();
+    renderDashboard();
+  } catch(e) {
+    showToast('❌ Error saving attendance', 'error');
+  }
+}
+
+// ── BULK MARK ────────────────────────────────────────────────────
+async function openBulkModal() {
+  await populateDeptFilters();
+  openModal('bulkModal');
+}
+
+async function saveBulkAttendance() {
+  const date = document.getElementById('markDate').value || todayStr();
+  const status = document.getElementById('bulkStatus').value;
+  const inTime = document.getElementById('bulkIn').value;
+  const outTime = document.getElementById('bulkOut').value;
+  const dept = document.getElementById('bulkDept').value;
+  const note = document.getElementById('bulkNote').value;
+
+  const emps = await getEmployees();
+  let list = emps.filter(e=>e.status==='Active');
+  if (dept!=='ALL') list = list.filter(e=>e.dept===dept);
+
+  let saved = 0;
+  for (const emp of list) {
+    const hrs = calcHours(inTime, outTime);
+    const rec = {
+      id:emp.id+'_'+date,empId:emp.id,date,
+      inTime:status==='Absent'||status==='Leave'?'':inTime,
+      outTime:status==='Absent'||status==='Leave'?'':outTime,
+      status,leaveType:'',note,hours:hrs,
+      empName:emp.name,empDept:emp.dept,empEmpId:emp.empId,
+      email: normalizeEmail(emp.email),
+      updatedAt:new Date().toISOString()
+    };
+    await saveAttendanceDB(rec);
+    saved++;
+  }
+
+  showToast(`✅ Marked ${saved} employees as ${status}`, 'success');
+  closeModal('bulkModal');
+  renderMarkPage();
+}
+
+// ── RECORDS PAGE ─────────────────────────────────────────────────
+async function renderRecords() {
+  const search = document.getElementById('recSearch').value.toLowerCase();
+  const fromDate = document.getElementById('recFromDate').value;
+  const toDate = document.getElementById('recToDate').value;
+  const statusFilter = document.getElementById('recStatus').value;
+  const deptFilter = document.getElementById('recDept').value;
+
+  let data = await getAttendance({});
+  if (fromDate) data = data.filter(a=>a.date>=fromDate);
+  if (toDate) data = data.filter(a=>a.date<=toDate);
+  if (statusFilter) data = data.filter(a=>a.status===statusFilter);
+  if (search) data = data.filter(a=>(a.empName||'').toLowerCase().includes(search)||(a.empEmpId||'').toLowerCase().includes(search));
+  if (deptFilter) data = data.filter(a=>a.empDept===deptFilter);
+
+  data.sort((a,b)=>b.date.localeCompare(a.date));
+  document.getElementById('recCount').textContent = data.length+' records';
+
+  const tbody = document.getElementById('recTable');
+  if (!data.length) { tbody.innerHTML='<tr><td colspan="8"><div class="empty-state"><div class="esi">🔍</div><h3>No records found</h3></div></td></tr>'; return; }
+
+  tbody.innerHTML = data.map(a => {
+    const col = avatarColor(a.empName);
+    return `<tr>
+      <td class="mono" style="color:var(--text2);font-size:12px">${fmtDisplay(a.date)}</td>
+      <td><div style="display:flex;align-items:center;gap:8px">
+        <div class="emp-avatar" style="background:${col}20;color:${col};width:30px;height:30px;font-size:11px">${initials(a.empName)}</div>
+        <div>
+          <div style="font-size:13px;font-weight:500">${a.empName||'—'}</div>
+          <div style="font-size:11px;color:var(--text3)">${a.empEmpId||''}</div>
+        </div>
+      </div></td>
+      <td style="font-size:12px;color:var(--text2)">${a.empDept||'—'}</td>
+      <td class="mono" style="color:var(--green2)">${a.inTime||'—'}</td>
+      <td class="mono" style="color:var(--red2)">${a.outTime||'—'}</td>
+      <td class="mono" style="color:var(--gold2)">${a.hours?a.hours.toFixed(1)+' h':'—'}</td>
+      <td>${statusPill(a.status)}</td>
+      <td style="font-size:12px;color:var(--text2)">${a.leaveType||a.note||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── EMPLOYEES PAGE ────────────────────────────────────────────────
+async function renderEmployees() {
+  const search = document.getElementById('empSearch').value.toLowerCase();
+  const deptFilter = document.getElementById('empDeptFilter').value;
+  const statusFilter = document.getElementById('empStatusFilter').value;
+
+  let emps = await getEmployees();
+  if (search) emps = emps.filter(e=>e.name.toLowerCase().includes(search)||e.empId.toLowerCase().includes(search)||e.dept.toLowerCase().includes(search));
+  if (deptFilter) emps = emps.filter(e=>e.dept===deptFilter);
+  if (statusFilter) emps = emps.filter(e=>e.status===statusFilter);
+
+  document.getElementById('empCount').textContent = `${emps.length} employee(s) found`;
+
+  const tbody = document.getElementById('empTable');
+  if (!emps.length) { tbody.innerHTML='<tr><td colspan="8"><div class="empty-state"><div class="esi">👥</div><h3>No employees found</h3><p>Add employees using the button above</p></div></td></tr>'; return; }
+
+  tbody.innerHTML = emps.map(emp => {
+    const col = avatarColor(emp.name);
+    return `<tr>
+      <td class="mono" style="color:var(--blue2)">${emp.empId}</td>
+      <td><div style="display:flex;align-items:center;gap:10px">
+        <div class="emp-avatar" style="background:${col}20;color:${col}">${initials(emp.name)}</div>
+        <div>
+          <div style="font-weight:500">${emp.name}</div>
+          <div style="font-size:11px;color:var(--text2)">${emp.email||''}</div>
+        </div>
+      </div></td>
+      <td style="color:var(--text2);font-size:13px">${emp.dept}</td>
+      <td style="color:var(--text2);font-size:13px">${emp.designation||'—'}</td>
+      <td class="mono" style="font-size:12px;color:var(--text2)">${emp.shiftIn}–${emp.shiftOut}</td>
+      <td class="mono" style="font-size:12px;color:var(--text2)">${fmtDisplay(emp.joinDate)||'—'}</td>
+      <td>${emp.status==='Active'?'<span class="pill pill-green">Active</span>':'<span class="pill pill-red">Inactive</span>'}</td>
+      <td>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm btn-ghost" onclick="editEmp('${emp.id}')">✏️</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteEmp('${emp.id}','${emp.name}')">🗑️</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── EMPLOYEE MODAL ────────────────────────────────────────────────
+function openAddEmpModal() {
+  document.getElementById('empModalTitle').textContent = 'Add Employee';
+  document.getElementById('empId').value = '';
+  ['empEmpId','empName','empDesignation','empPhone','empEmail','empJoinDate'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('empDept').value='';
+  document.getElementById('empShiftIn').value='09:00';
+  document.getElementById('empShiftOut').value='18:00';
+  document.getElementById('empStatus').value='Active';
+  document.getElementById('empRole').value='employee';
+  document.getElementById('empHalfThreshold').value='4';
+  openModal('empModal');
+}
+
+async function editEmp(id) {
+  const emps = await getEmployees();
+  const emp = emps.find(e=>e.id===id);
+  if (!emp) return;
+  document.getElementById('empModalTitle').textContent = 'Edit Employee';
+  document.getElementById('empId').value = emp.id;
+  document.getElementById('empEmpId').value = emp.empId;
+  document.getElementById('empName').value = emp.name;
+  document.getElementById('empDept').value = emp.dept;
+  document.getElementById('empDesignation').value = emp.designation||'';
+  document.getElementById('empShiftIn').value = emp.shiftIn;
+  document.getElementById('empShiftOut').value = emp.shiftOut;
+  document.getElementById('empJoinDate').value = emp.joinDate||'';
+  document.getElementById('empPhone').value = emp.phone||'';
+  document.getElementById('empEmail').value = emp.email||'';
+  document.getElementById('empStatus').value = emp.status;
+  document.getElementById('empRole').value = getRoleFromEmployee(emp);
+  document.getElementById('empHalfThreshold').value = emp.halfThreshold||4;
+  openModal('empModal');
+}
+
+async function saveEmployee() {
+  const name = document.getElementById('empName').value.trim();
+  const empEmpId = document.getElementById('empEmpId').value.trim().toUpperCase();
+  const dept = document.getElementById('empDept').value;
+  if (!name) { showToast('❌ Employee name is required','error'); return; }
+  if (!empEmpId) { showToast('❌ Employee ID is required','error'); return; }
+  if (!dept) { showToast('❌ Please select a department','error'); return; }
+
+  const existingId = document.getElementById('empId').value;
+  const id = (existingId || empEmpId).trim().toUpperCase();
+
+  const emp = {
+    id, empId:empEmpId, name, dept,
+    designation:document.getElementById('empDesignation').value,
+    shiftIn:document.getElementById('empShiftIn').value,
+    shiftOut:document.getElementById('empShiftOut').value,
+    joinDate:document.getElementById('empJoinDate').value,
+    phone:document.getElementById('empPhone').value,
+    email:normalizeEmail(document.getElementById('empEmail').value),
+    role:getRoleFromEmployee({role:document.getElementById('empRole').value}),
+    status:document.getElementById('empStatus').value,
+    halfThreshold:parseFloat(document.getElementById('empHalfThreshold').value)||4,
+    updatedAt:new Date().toISOString()
+  };
+
+    try {
+    console.log("Employee object before save:", emp);
+
+    await saveEmployeeDB(emp);
+
+    showToast(`✅ Employee ${name} saved!`, 'success');
+    closeModal('empModal');
+    renderEmployees();
+    populateDeptFilters();
+  } catch (e) {
+    console.error("saveEmployee() failed:", e);
+    showToast(`❌ ${e.code || 'error'}: ${e.message || 'Error saving employee'}`, 'error');
+    alert(`Save failed\nCode: ${e.code || 'N/A'}\nMessage: ${e.message || e}`);
+  }
+}
+
+async function deleteEmp(id, name) {
+  if (!confirm(`Delete ${name}? This will also delete their attendance records.`)) return;
+  try {
+    await deleteEmployeeDB(id);
+    showToast(`🗑️ ${name} deleted`, 'info');
+    renderEmployees();
+  } catch(e) { showToast('❌ Error deleting employee', 'error'); }
+}
+
+// ── REPORTS PAGE ──────────────────────────────────────────────────
+async function renderReports() {
+  const month = document.getElementById('reportMonth').value;
+  const [yr,mo] = month.split('-').map(Number);
+  const daysInMonth = new Date(yr,mo,0).getDate();
+
+  let workingDays = 0;
+  const allDates = [];
+  for(let d=1;d<=daysInMonth;d++) {
+    const dt = new Date(yr,mo-1,d);
+    if(dt.getDay()!==0) { workingDays++; allDates.push(`${month}-${String(d).padStart(2,'0')}`); }
+  }
+
+  const [emps, attRecs] = await Promise.all([getEmployees(), getAttendance({month})]);
+  const attMap = {};
+  attRecs.forEach(a => {
+    if(!attMap[a.empId]) attMap[a.empId]={};
+    attMap[a.empId][a.date]=a;
+  });
+
+  const rows = emps.filter(e=>e.status==='Active').map(emp => {
+    const recs = attMap[emp.id]||{};
+    let p=0,a=0,h=0,l=0,late=0;
+    allDates.forEach(date => {
+      const r = recs[date];
+      if (!r) { return; }
+      if(r.status==='Present') p++;
+      else if(r.status==='Absent') a++;
+      else if(r.status==='Half Day') h++;
+      else if(r.status==='Leave') l++;
+      else if(r.status==='Late') { p++; late++; }
+    });
+    const pct = workingDays ? Math.round((p + h*0.5)/workingDays*100) : 0;
+    return {emp,p,a,h,l,late,pct,workingDays};
+  });
+
+  const tbody = document.getElementById('reportTable');
+  tbody.innerHTML = rows.sort((a,b)=>b.pct-a.pct).map(r => {
+    const col = avatarColor(r.emp.name);
+    const pctCol = r.pct>=90?'var(--green2)':r.pct>=75?'var(--gold2)':'var(--red2)';
+    return `<tr>
+      <td class="mono" style="color:var(--blue2)">${r.emp.empId}</td>
+      <td><div style="display:flex;align-items:center;gap:8px">
+        <div class="emp-avatar" style="background:${col}20;color:${col};width:30px;height:30px;font-size:11px">${initials(r.emp.name)}</div>
+        <span style="font-weight:500">${r.emp.name}</span>
+      </div></td>
+      <td style="color:var(--text2);font-size:12px">${r.emp.dept}</td>
+      <td class="mono" style="text-align:center">${r.workingDays}</td>
+      <td class="mono" style="text-align:center;color:var(--green2)">${r.p}</td>
+      <td class="mono" style="text-align:center;color:var(--red2)">${r.a}</td>
+      <td class="mono" style="text-align:center;color:var(--gold2)">${r.h}</td>
+      <td class="mono" style="text-align:center;color:var(--blue2)">${r.l}</td>
+      <td class="mono" style="text-align:center;color:var(--purple2)">${r.late}</td>
+      <td><div style="display:flex;align-items:center;gap:8px">
+        <div style="flex:1;height:5px;background:var(--border);border-radius:5px;overflow:hidden">
+          <div style="height:100%;width:${r.pct}%;background:${pctCol};border-radius:5px"></div>
+        </div>
+        <span style="font-family:'DM Mono',monospace;font-size:12px;color:${pctCol};min-width:38px;text-align:right">${r.pct}%</span>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── EXPORT FUNCTIONS ──────────────────────────────────────────────
+function exportCSV() {
+  const rows = [['Date','Employee','Emp ID','Department','In Time','Out Time','Hours','Status','Leave Type','Note']];
+  (window._useDemo ? DEMO_ATTENDANCE : []).forEach(a => {
+    rows.push([a.date,a.empName,a.empEmpId,a.empDept,a.inTime,a.outTime,a.hours,a.status,a.leaveType,a.note]);
+  });
+  const csv = rows.map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  downloadFile('AttendPro_Records.csv','text/csv',csv);
+}
+
+async function exportExcel() {
+  const attData = await getAttendance({});
+  const headers = ['Date','Employee','Emp ID','Department','In Time','Out Time','Hours Worked','Status','Leave Type','Note'];
+  const rows = attData.sort((a,b)=>b.date.localeCompare(a.date)).map(a=>[
+    fmtDisplay(a.date),a.empName||'',a.empEmpId||'',a.empDept||'',
+    a.inTime||'',a.outTime||'',a.hours?a.hours.toFixed(1):'',
+    a.status||'',a.leaveType||'',a.note||''
+  ]);
+  generateExcel('AttendPro_Records', headers, rows);
+}
+
+async function exportMonthlyExcel() {
+  const month = document.getElementById('reportMonth').value;
+  const [yr,mo] = month.split('-').map(Number);
+  const daysInMonth = new Date(yr,mo,0).getDate();
+  let workingDays=0;
+  const allDates=[];
+  for(let d=1;d<=daysInMonth;d++){
+    const dt=new Date(yr,mo-1,d);
+    if(dt.getDay()!==0){workingDays++;allDates.push(`${month}-${String(d).padStart(2,'0')}`);}
+  }
+  const [emps,attRecs]=await Promise.all([getEmployees(),getAttendance({month})]);
+  const attMap={};
+  attRecs.forEach(a=>{if(!attMap[a.empId])attMap[a.empId]={};attMap[a.empId][a.date]=a;});
+
+  const headers=['Emp ID','Name','Department','Working Days','Present','Absent','Half Day','Leave','Late','Attendance %'];
+  const rows=emps.filter(e=>e.status==='Active').map(emp=>{
+    const recs=attMap[emp.id]||{};
+    let p=0,a=0,h=0,l=0,late=0;
+    allDates.forEach(date=>{
+      const r=recs[date];
+      if(!r){a++;return;}
+      if(r.status==='Present')p++;
+      else if(r.status==='Absent')a++;
+      else if(r.status==='Half Day')h++;
+      else if(r.status==='Leave')l++;
+      else if(r.status==='Late'){p++;late++;}
+    });
+    const pct=workingDays?Math.round((p+h*0.5)/workingDays*100):0;
+    return[emp.empId,emp.name,emp.dept,workingDays,p,a,h,l,late,pct+'%'];
+  });
+  generateExcel(`AttendPro_${monthLabel(month).replace(' ','_')}`, headers, rows);
+}
+
+function generateExcel(filename, headers, rows) {
+  // Generate an Excel-readable HTML table
+  const headerHtml = headers.map(h => '<th>' + escapeHtml(String(h ?? '')) + '</th>').join('');
+  let html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>${escapeHtml(String(filename))}</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>
+<body><table>
+<thead><tr style="background:#1e3a5f;color:#ffffff;font-weight:bold">${headerHtml}</tr></thead>
+<tbody>`;
+  rows.forEach((row, i) => {
+    const bg = i % 2 === 0 ? '#f0f4ff' : '#ffffff';
+    const cells = row.map(v => '<td>' + escapeHtml(String(v ?? '')) + '</td>').join('');
+    html += `<tr style="background:${bg}">${cells}</tr>`;
+  });
+  html += '</tbody></table></body></html>';
+  downloadFile(filename + '.xls', 'application/vnd.ms-excel', html);
+}
+
+function escapeHtml(value) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function downloadFile(filename, type, content) {
+  const blob = new Blob([content],{type});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast(`📥 ${filename} downloaded!`, 'success');
+}
+
+
+
+function getCurrentTimeHHMM() {
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+}
+
+async function renderSelfPage() {
+  const empCard = document.getElementById('selfEmpCard');
+  const statusBox = document.getElementById('selfTodayStatus');
+  const metaBox = document.getElementById('selfPunchMeta');
+  const tbody = document.getElementById('selfAttendanceTable');
+  const btnIn = document.getElementById('btnPunchIn');
+  const btnOut = document.getElementById('btnPunchOut');
+
+  if (!CURRENT_EMPLOYEE) {
+    empCard.innerHTML = `
+      <div class="empty-state">
+        <div class="esi">⚠️</div>
+        <h3>Employee profile not found</h3>
+        <p>Your login email is not mapped with any employee record. Admin must save the same email in Employees.</p>
+      </div>`;
+    statusBox.textContent = 'No employee mapping found.';
+    metaBox.textContent = '';
+    tbody.innerHTML = '';
+    btnIn.disabled = true;
+    btnOut.disabled = true;
+    return;
+  }
+
+  empCard.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="emp-avatar" style="background:${avatarColor(CURRENT_EMPLOYEE.name)}20;color:${avatarColor(CURRENT_EMPLOYEE.name)};width:48px;height:48px">${initials(CURRENT_EMPLOYEE.name)}</div>
+      <div>
+        <div style="font-size:16px;font-weight:600">${CURRENT_EMPLOYEE.name}</div>
+        <div style="font-size:12px;color:var(--text2)">${CURRENT_EMPLOYEE.empId} · ${CURRENT_EMPLOYEE.dept}</div>
+        <div style="font-size:11px;color:var(--text3)">${CURRENT_EMPLOYEE.designation || ''}</div>
+      </div>
+    </div>
+    <div style="margin-top:16px;font-size:12px;color:var(--text2);font-family:'DM Mono',monospace">
+      Shift: ${CURRENT_EMPLOYEE.shiftIn} - ${CURRENT_EMPLOYEE.shiftOut}
+    </div>`;
+
+  const today = todayStr();
+  const todayRec = (await getAttendance({ date: today, empId: CURRENT_EMPLOYEE.id })).find(a => a.empId === CURRENT_EMPLOYEE.id);
+
+  if (!todayRec) {
+    statusBox.innerHTML = `Today's Status: <span style="color:var(--text2)">Not Marked</span>`;
+    metaBox.textContent = 'No punch recorded yet.';
+    btnIn.disabled = false;
+    btnOut.disabled = true;
+  } else {
+    statusBox.innerHTML = `Today's Status: ${statusPill(todayRec.status || 'Present')}`;
+    metaBox.innerHTML = `IN: ${todayRec.inTime || '—'} | OUT: ${todayRec.outTime || '—'} | Hours: ${todayRec.hours ? todayRec.hours.toFixed(1) : '0'} h`;
+    btnIn.disabled = !!todayRec.inTime;
+    btnOut.disabled = !todayRec.inTime || !!todayRec.outTime;
+  }
+
+  let myData = await getAttendance({ empId: CURRENT_EMPLOYEE.id });
+  myData = myData.sort((a,b) => b.date.localeCompare(a.date)).slice(0, 10);
+
+  tbody.innerHTML = myData.length ? myData.map(a => `
+    <tr>
+      <td class="mono">${fmtDisplay(a.date)}</td>
+      <td class="mono" style="color:var(--green2)">${a.inTime || '—'}</td>
+      <td class="mono" style="color:var(--red2)">${a.outTime || '—'}</td>
+      <td class="mono" style="color:var(--gold2)">${a.hours ? a.hours.toFixed(1) + ' h' : '—'}</td>
+      <td>${statusPill(a.status)}</td>
+    </tr>`).join('') : `<tr><td colspan="5"><div class="empty-state"><h3>No attendance yet</h3></div></td></tr>`;
+}
+
+async function employeePunchIn() {
+  if (!CURRENT_EMPLOYEE) {
+    showToast('❌ Employee mapping not found', 'error');
+    return;
+  }
+
+  const date = todayStr();
+  const existing = (await getAttendance({ date, empId: CURRENT_EMPLOYEE.id })).find(a => a.empId === CURRENT_EMPLOYEE.id);
+
+  if (existing && existing.inTime) {
+    showToast('⚠️ Already punched in today', 'info');
+    return;
+  }
+
+  const nowTime = getCurrentTimeHHMM();
+  const rec = existing || {
+    id: CURRENT_EMPLOYEE.id + '_' + date,
+    empId: CURRENT_EMPLOYEE.id,
+    date,
+    empName: CURRENT_EMPLOYEE.name,
+    empDept: CURRENT_EMPLOYEE.dept,
+    empEmpId: CURRENT_EMPLOYEE.empId,
+    email: normalizeEmail(CURRENT_EMPLOYEE.email),
+    leaveType: '',
+    note: ''
+  };
+
+  rec.inTime = nowTime;
+  rec.outTime = existing?.outTime || '';
+  rec.hours = rec.outTime ? calcHours(rec.inTime, rec.outTime) : 0;
+  rec.status = rec.outTime ? computeStatus(CURRENT_EMPLOYEE, rec.inTime, rec.outTime, rec.hours) : 'Present';
+  rec.email = normalizeEmail(CURRENT_EMPLOYEE.email);
+  rec.source = 'employee_self_marked';
+  rec.updatedAt = new Date().toISOString();
+
+  try {
+    await saveAttendanceDB(rec);
+    showToast(`✅ Punch In recorded at ${nowTime}`, 'success');
+    renderSelfPage();
+    if (APP_ROLE === 'admin') { renderDashboard(); renderMarkPage(); }
+  } catch (e) {
+    console.error(e);
+    showToast('❌ Punch In failed', 'error');
+  }
+}
+
+async function employeePunchOut() {
+  if (!CURRENT_EMPLOYEE) {
+    showToast('❌ Employee mapping not found', 'error');
+    return;
+  }
+
+  const date = todayStr();
+  const existing = (await getAttendance({ date, empId: CURRENT_EMPLOYEE.id })).find(a => a.empId === CURRENT_EMPLOYEE.id);
+
+  if (!existing || !existing.inTime) {
+    showToast('❌ First Punch In, then Punch Out', 'error');
+    return;
+  }
+
+  if (existing.outTime) {
+    showToast('⚠️ Already punched out today', 'info');
+    return;
+  }
+
+  const nowTime = getCurrentTimeHHMM();
+  const hrs = calcHours(existing.inTime, nowTime);
+
+  const rec = {
+    ...existing,
+    outTime: nowTime,
+    hours: hrs,
+    status: computeStatus(CURRENT_EMPLOYEE, existing.inTime, nowTime, hrs),
+    email: normalizeEmail(CURRENT_EMPLOYEE.email),
+    source: 'employee_self_marked',
+    updatedAt: new Date().toISOString()
+  };
+
+  try {
+    await saveAttendanceDB(rec);
+    showToast(`✅ Punch Out recorded at ${nowTime}`, 'success');
+    renderSelfPage();
+    if (APP_ROLE === 'admin') { renderDashboard(); renderMarkPage(); }
+  } catch (e) {
+    console.error(e);
+    showToast('❌ Punch Out failed', 'error');
+  }
+}
+
+// ── MODAL HELPERS ─────────────────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if(e.target===m) m.classList.remove('open'); });
+});
+
+// ── TOAST ─────────────────────────────────────────────────────────
+function showToast(msg, type='info') {
+  let container = document.getElementById('toastContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.className = 'toast-container';
+    document.body.appendChild(container);
+  }
+
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = msg;
+  container.appendChild(toast);
+  setTimeout(() => { toast.style.opacity = '0'; }, 2700);
+  setTimeout(() => { if (toast.parentNode) toast.remove(); }, 3000);
+}
+</script>
+
+
+<div id="toastContainer" class="toast-container"></div>
+</body>
+</html>
